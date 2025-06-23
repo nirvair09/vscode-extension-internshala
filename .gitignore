@@ -1,0 +1,27 @@
+```
+# Node
+node_modules
+
+# VS Code
+.vscode
+
+# Build
+/dist
+/media/bundle.js
+/out
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Typescript
+*.tsbuildinfo
+
+# Env
+.env
+
+# Coverage
+coverage
