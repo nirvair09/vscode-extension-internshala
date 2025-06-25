@@ -19,27 +19,36 @@ export function activate(context: vscode.ExtensionContext) {
 
       panel.webview.onDidReceiveMessage(
         async (message) => {
-         if (message.command === 'userPrompt') {
-  let contextText = '';
-  
-  if (message.file) {
-    const files = await vscode.workspace.findFiles(`**/${message.file}`);
-    for (const file of files) {
-      const doc = await vscode.workspace.openTextDocument(file);
-      contextText += `\n\nFile: ${file.path}\n${doc.getText()}`;
-    }
-  } else {
-    const files = await vscode.workspace.findFiles('**/*.{ts,js,cpp,py,txt}', '**/node_modules/**', 5);
-    for (const file of files) {
-      const doc = await vscode.workspace.openTextDocument(file);
-      contextText += `\n\nFile: ${file.path}\n${doc.getText()}`;
-    }
-  }
+          if (message.command === 'userPrompt') {
+            let contextText = '';
+            let imageBase64: string | null = null;
 
-  const aiResponse = await callGeminiAPI(message.prompt, contextText);
-  panel.webview.postMessage({ command: 'aiResponse', text: aiResponse });
-}
+            if (message.file) {
+              // Find and read the mentioned file
+              const files = await vscode.workspace.findFiles(`**/${message.file}`);
+              for (const file of files) {
+                const ext = file.fsPath.split('.').pop()?.toLowerCase();
 
+                if (['png', 'jpg', 'jpeg', 'gif'].includes(ext || '')) {
+                  const imgData = await vscode.workspace.fs.readFile(file);
+                  imageBase64 = Buffer.from(imgData).toString('base64');
+                } else {
+                  const doc = await vscode.workspace.openTextDocument(file);
+                  contextText += `\n\nFile: ${file.fsPath}\n${doc.getText()}`;
+                }
+              }
+            } else {
+              // No @file mentioned – use active file
+              const editor = vscode.window.activeTextEditor;
+              if (editor) {
+                const doc = editor.document;
+                contextText += `\n\nActive File: ${doc.fileName}\n${doc.getText()}`;
+              }
+            }
+
+            const aiResponse = await callGeminiAPI(message.prompt, contextText, imageBase64);
+            panel.webview.postMessage({ command: 'aiResponse', text: aiResponse });
+          }
         },
         undefined,
         context.subscriptions
